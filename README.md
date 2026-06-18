@@ -63,10 +63,13 @@ The game features ten distinct thematic levels:
 
 ---
 
-## 📱 Flutter App Wrapping & Firebase leaderboards
+## 📱 Flutter App Wrapping & Firebase Integration
 
 This project is wrapped in a full-screen, landscape-locked Flutter `WebViewWidget` that runs the web-based game. It features:
 * **Firebase Cloud Leaderboard**: Real-time high-score sync with Cloud Firestore.
+* **Firebase Analytics**: Tracks game events (e.g., state transitions, victory, game over, and scores) directly from the JavaScript layer.
+* **Firebase Crashlytics**: Collects fatal and non-fatal errors from the Flutter native app, as well as unhandled JavaScript exceptions from the WebView game loop.
+* **Firebase Performance Monitoring**: Employs custom traces (`get_leaderboard_scores` and `save_leaderboard_score`) to track the latency of leaderboard fetch and submission operations.
 * **Offline Caching Fallback**: Seamless fallback to local `SharedPreferences` cache (on mobile) or `localStorage` (on web) if offline or if Firebase credentials are unconfigured.
 * **Interactive High-Score Submission**: A custom Name Input Form appears automatically upon Victory or Game Over if the player qualifies for the Top 5 leaderboard.
 * **Mobile Touch Controls**: A virtual joystick zone and custom action buttons on mobile touch layouts.
@@ -74,9 +77,52 @@ This project is wrapped in a full-screen, landscape-locked Flutter `WebViewWidge
 * **Sticky Full-Screen Immersive Mode**: Hides system status bars and navigation menus using Flutter's native window/system chrome configurations.
 * **Bypassed Audio Gesture Constraints**: Autoplay is enabled on the WebView so audio triggers without needing explicit user touch gestures.
 
+### 🔌 JavaScript-to-Native Bridge (LeaderboardChannel)
+
+Communication between the WebView (`assets/game.js`) and Flutter (`lib/main.dart`) is facilitated via a JavaScript Channel named `LeaderboardChannel`. Message payloads are sent as JSON strings with the following formats:
+
+1. **Fetch Leaderboard Scores**
+   ```json
+   { "type": "getScores" }
+   ```
+   *Native action: Fetches current high scores, saves to local cache, and calls `window.onScoresLoaded(scoresJson)` on completion.*
+
+2. **Save Player Score**
+   ```json
+   {
+     "type": "saveScore",
+     "name": "Sven",
+     "score": 15000
+   }
+   ```
+   *Native action: Commits the player record to Firestore and records a score post to Analytics.*
+
+3. **Log Analytics Event**
+   ```json
+   {
+     "type": "logEvent",
+     "name": "level_start",
+     "parameters": {
+       "level_id": "ikea_warehouse",
+       "level_title": "1. IKEA Warehouse"
+     }
+   }
+   ```
+   *Native action: Routes custom gameplay metrics directly to Firebase Analytics.*
+
+4. **Record JavaScript Exception**
+   ```json
+   {
+     "type": "recordError",
+     "message": "TypeError: Cannot read properties of undefined (at game.js:123:45)",
+     "stack": "TypeError: Cannot read properties of undefined\n  at Game.update (game.js:123:45)"
+   }
+   ```
+   *Native action: Submits WebView exceptions to Firebase Crashlytics as non-fatal runtime issues.*
+
 ### Flutter Project Structure
-- [main.dart](file:///home/xbill/midsommer-firebase/lib/main.dart): Sets up full-screen immersive view, locks orientation to landscape, initializes Firebase, registers the `LeaderboardChannel` JavaScript bridge, and handles offline caching.
-- [pubspec.yaml](file:///home/xbill/midsommer-firebase/pubspec.yaml): Manages Dart packages (`webview_flutter`, `firebase_core`, `cloud_firestore`, `shared_preferences`) and registers game assets.
+- [main.dart](file:///home/xbill/midsommer-firebase/lib/main.dart): Sets up full-screen immersive view, locks orientation to landscape, initializes Firebase (Analytics, Crashlytics, Performance), registers the `LeaderboardChannel` JavaScript bridge, and handles offline caching.
+- [pubspec.yaml](file:///home/xbill/midsommer-firebase/pubspec.yaml): Manages Dart packages (`webview_flutter`, `firebase_core`, `cloud_firestore`, `firebase_analytics`, `firebase_crashlytics`, `firebase_performance`, `shared_preferences`) and registers game assets.
 - [index.html](file:///home/xbill/midsommer-firebase/assets/index.html): Mobile-first touch UI canvas, high-score input forms, and entry point.
 
 ### 🛠️ Building and Deploying via CLI (Makefile)
