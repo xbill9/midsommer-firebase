@@ -6,7 +6,7 @@ export JAVA_HOME
 export PATH := $(JAVA_HOME)/bin:$(PATH)
 export ANDROID_HOME := /home/xbill/android-sdk
 
-.PHONY: help dev run build-apk build-ios install-apk clean logcat deploy firebase-logs firebase-emulators deploy-preview firebase-status deploy-rules
+.PHONY: help dev run build-apk build-ios install-apk clean logcat deploy firebase-logs firebase-emulators deploy-preview firebase-status deploy-rules test
 
 # Default target: show help
 help:
@@ -15,6 +15,7 @@ help:
 	@echo "========================================================================"
 	@echo "Available commands:"
 	@echo "  make dev          - Start the local web server for browser play (from assets/)"
+	@echo "  make test         - Run the Flutter unit/widget test suite"
 	@echo "  make build-apk    - Compile the Flutter App and build Debug APK"
 	@echo "  make build-ios    - Compile the Flutter App and build iOS app (no codesign)"
 	@echo "  make install-apk  - Install the compiled debug APK on a connected device/emulator"
@@ -89,6 +90,11 @@ firebase-status:
 deploy-rules:
 	@echo "Deploying Firestore security rules..."
 	npx -y firebase-tools deploy --only firestore:rules
+
+# Run Flutter tests
+test:
+	@echo "Running Flutter widget and unit tests..."
+	flutter test
 
 
 
