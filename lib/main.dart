@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -6,6 +7,9 @@ import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_performance/firebase_performance.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 bool _isFirebaseInitialized = false;
@@ -24,6 +28,8 @@ Future<void> _initFirebaseSafely() async {
 // Fetch high scores
 Future<List<Map<String, dynamic>>> _getScores() async {
   if (_isFirebaseInitialized) {
+    final Trace trace = FirebasePerformance.instance.newTrace('get_leaderboard_scores');
+    await trace.start();
     try {
       final snapshot = await FirebaseFirestore.instance
           .collection('leaderboard')
@@ -44,9 +50,22 @@ Future<List<Map<String, dynamic>>> _getScores() async {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('cached_leaderboard', json.encode(firebaseScores));
       
+      // Log successful fetch analytics event
+      await FirebaseAnalytics.instance.logEvent(
+        name: 'leaderboard_fetched',
+        parameters: {'count': firebaseScores.length},
+      );
+      
+      await trace.stop();
       return firebaseScores;
-    } catch (e) {
+    } catch (e, stack) {
       debugPrint("Failed to fetch from Firebase, using cache: $e");
+      await FirebaseCrashlytics.instance.recordError(
+        e,
+        stack,
+        reason: 'Failed to fetch leaderboard scores',
+      );
+      await trace.stop();
     }
   }
 
@@ -75,6 +94,8 @@ Future<List<Map<String, dynamic>>> _getScores() async {
 // Save high score
 Future<void> _saveScore(String name, int score) async {
   if (_isFirebaseInitialized) {
+    final Trace trace = FirebasePerformance.instance.newTrace('save_leaderboard_score');
+    await trace.start();
     try {
       await FirebaseFirestore.instance.collection('leaderboard').add({
         'name': name,
@@ -82,9 +103,24 @@ Future<void> _saveScore(String name, int score) async {
         'timestamp': FieldValue.serverTimestamp(),
       });
       debugPrint("Score saved to Firebase successfully");
+      
+      // Log analytics event
+      await FirebaseAnalytics.instance.logPostScore(
+        score: score,
+        level: 1,
+        character: name,
+      );
+      
+      await trace.stop();
       return;
-    } catch (e) {
+    } catch (e, stack) {
       debugPrint("Failed to save to Firebase, saving to local cache instead: $e");
+      await FirebaseCrashlytics.instance.recordError(
+        e,
+        stack,
+        reason: 'Failed to save high score to Firestore',
+      );
+      await trace.stop();
     }
   }
 
@@ -111,6 +147,18 @@ Future<void> _saveScore(String name, int score) async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await _initFirebaseSafely();
+
+  if (_isFirebaseInitialized) {
+    // Pass all uncaught framework errors from the Flutter framework to Crashlytics.
+    FlutterError.onError = (FlutterErrorDetails errorDetails) {
+      FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+    };
+    // Pass all uncaught asynchronous errors that aren't handled by the Flutter framework to Crashlytics.
+    PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
+  }
   
   // Set preferred orientations to landscape only
   SystemChrome.setPreferredOrientations([
@@ -190,6 +238,22 @@ class _GameScreenState extends State<GameScreen> {
               final scores = await _getScores();
               final scoresJson = json.encode(scores);
               _controller.runJavaScript("if (window.onScoresLoaded) { window.onScoresLoaded($scoresJson); }");
+            } else if (type == 'logEvent') {
+              final String eventName = data['name'] ?? '';
+              final Map<String, Object> params = Map<String, Object>.from(data['parameters'] ?? {});
+              if (eventName.isNotEmpty && _isFirebaseInitialized) {
+                await FirebaseAnalytics.instance.logEvent(name: eventName, parameters: params);
+              }
+            } else if (type == 'recordError') {
+              final String errorMessage = data['message'] ?? 'JS WebView Error';
+              final String stackString = data['stack'] ?? '';
+              if (_isFirebaseInitialized) {
+                await FirebaseCrashlytics.instance.recordError(
+                  errorMessage,
+                  StackTrace.fromString(stackString),
+                  reason: 'JS Game Error via WebView',
+                );
+              }
             }
           } catch (e) {
             debugPrint('Error processing message from WebView: $e');
