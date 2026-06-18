@@ -1,0 +1,61 @@
+# Midsommer Madness - Flutter Build and Development Automation Makefile
+# Swedish-themed retro arcade game refactored to Flutter.
+
+JAVA_HOME ?= /usr/lib/jvm/java-25-openjdk-amd64
+export JAVA_HOME
+export PATH := $(JAVA_HOME)/bin:$(PATH)
+export ANDROID_HOME := /home/xbill/android-sdk
+
+.PHONY: help dev run build-apk build-ios install-apk clean logcat deploy
+
+# Default target: show help
+help:
+	@echo "========================================================================"
+	@echo "🇸🇪  Midsommer Madness Flutter Build & Development Controls  🇸🇪"
+	@echo "========================================================================"
+	@echo "Available commands:"
+	@echo "  make dev          - Start the local web server for browser play (from assets/)"
+	@echo "  make build-apk    - Compile the Flutter App and build Debug APK"
+	@echo "  make build-ios    - Compile the Flutter App and build iOS app (no codesign)"
+	@echo "  make install-apk  - Install the compiled debug APK on a connected device/emulator"
+	@echo "  make clean        - Clean Flutter build outputs and temporary caches"
+	@echo "  make logcat       - Monitor application logs using Flutter logger"
+	@echo "  make deploy       - Deploy the game to Firebase Hosting"
+	@echo "========================================================================"
+
+# Development server
+dev: run
+
+run:
+	npm run dev
+
+# Build debug APK
+build-apk:
+	@echo "Building Flutter Debug APK..."
+	flutter build apk --debug
+
+# Build iOS App (without code signing)
+build-ios:
+	@echo "Building Flutter iOS App (without code signing)..."
+	flutter build ios --no-codesign
+
+# Install debug APK to device
+install-apk:
+	@echo "Installing Debug APK to connected device/emulator..."
+	flutter install
+
+# Clean the workspace
+clean:
+	@echo "Cleaning Flutter project build directories..."
+	flutter clean
+	@rm -rf build
+
+# Logs monitoring for debugging
+logcat:
+	flutter logs
+
+# Deploy web build to Firebase Hosting
+deploy:
+	@echo "Deploying to Firebase Hosting..."
+	npx -y firebase-tools deploy --only hosting
+

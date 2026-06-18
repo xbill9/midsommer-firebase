@@ -1,0 +1,1 @@
+ /home/xbill/midsommer-firebase/.dart_tool/flutter_build/33b9d174c6120b99646267534c263410/native_assets.json: 
