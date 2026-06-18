@@ -20,7 +20,8 @@ help:
 	@echo "  make install-apk  - Install the compiled debug APK on a connected device/emulator"
 	@echo "  make clean        - Clean Flutter build outputs and temporary caches"
 	@echo "  make logcat       - Monitor application logs using Flutter logger"
-	@echo "  make deploy       - Deploy the game to Firebase Hosting"
+	@echo "  make deploy       - Deploy the game to Firebase Hosting (manual bypass)"
+	@echo "  Note: Pushing/merging to 'master' on GitHub automatically triggers deployment."
 	@echo "========================================================================"
 
 # Development server

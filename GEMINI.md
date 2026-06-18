@@ -19,7 +19,7 @@ Use the provided `Makefile` to run, build, and debug this application:
 * **Deploy to Device/Emulator**: `make install-apk` (runs `flutter install`)
 * **Clean Build Directories**: `make clean` (runs `flutter clean`)
 * **Monitor Logs**: `make logcat` (runs `flutter logs`)
-* **Deploy Web App to Firebase**: `make deploy` (uses `npx -y firebase-tools` to publish the web game to Firebase Hosting)
+* **Deploy Web App to Firebase**: `make deploy` (manual bypass using `npx -y firebase-tools`; pushes to `master` branch on GitHub automatically deploy to the live site)
 
 ## 📂 Project Architecture
 
@@ -30,9 +30,12 @@ Use the provided `Makefile` to run, build, and debug this application:
 * **Flutter Wrapper**: Located in the main project, wrapping the web files inside a full-screen, landscape-locked `WebViewWidget`:
   * [main.dart](file:///home/xbill/midsommer-firebase/lib/main.dart): Sets up fullscreen sticky immersive mode, configures the `WebViewController` with unrestricted JavaScript, initializes Firebase, handles Firestore leaderboard reading/writing via the `LeaderboardChannel` JavaScript channel, and falls back to local `SharedPreferences` if unconfigured or offline.
   * [pubspec.yaml](file:///home/xbill/midsommer-firebase/pubspec.yaml): Registers dependencies like `webview_flutter`, `firebase_core`, `cloud_firestore`, `shared_preferences`, and configures the `assets/` directory.
-* **Firebase Configuration**:
+* **Firebase Configuration & CI/CD**:
   * [firebase.json](file:///home/xbill/midsommer-firebase/firebase.json) & [.firebaserc](file:///home/xbill/midsommer-firebase/.firebaserc): Configuration rules and target project definition for Firebase Web Hosting.
   * [google-services.json](file:///home/xbill/midsommer-firebase/android/app/google-services.json): Placeholders required to compile Google Services on Android, replaceable with production credentials.
+  * GitHub Workflows: Automatically deploys code to Firebase Hosting. Located at [.github/workflows/](file:///home/xbill/midsommer-firebase/.github/workflows/).
+    * [firebase-hosting-pull-request.yml](file:///home/xbill/midsommer-firebase/.github/workflows/firebase-hosting-pull-request.yml): Deploys testing preview channel on pull requests to `master`.
+    * [firebase-hosting-merge.yml](file:///home/xbill/midsommer-firebase/.github/workflows/firebase-hosting-merge.yml): Deploys live channel on merges or pushes to `master`.
 
 ## ⚠️ Key Instructions for Gemini / Antigravity
 

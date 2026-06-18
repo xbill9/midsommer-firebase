@@ -108,10 +108,21 @@ We provide a [Makefile](file:///home/xbill/midsommer-firebase/Makefile) to simpl
    *Views real-time logs using `flutter logs`.*
 
 5. **Deploy Web App to Firebase Hosting**:
-   ```bash
-   make deploy
-   ```
-   *Deploys the static assets inside the `assets/` directory to Firebase Hosting.*
+    ```bash
+    make deploy
+    ```
+    *Manually deploys the static assets inside the `assets/` directory to Firebase Hosting.*
+
+---
+
+## 🌐 GitHub Repository & CI/CD Deployment
+
+This project is hosted on GitHub at [xbill9/midsommer-firebase](https://github.com/xbill9/midsommer-firebase).
+
+Automated deployment is configured via GitHub Actions:
+* **Pull Request Preview**: Every PR targeting the `master` branch triggers `.github/workflows/firebase-hosting-pull-request.yml`, which deploys a temporary preview channel of the game for testing.
+* **Production Deploy**: Pushing or merging to the `master` branch triggers `.github/workflows/firebase-hosting-merge.yml`, which automatically deploys the latest version to the live Firebase Hosting site.
+
 
 6. **Clean Workspace Caches**:
    ```bash
