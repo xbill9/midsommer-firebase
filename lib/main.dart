@@ -13,6 +13,7 @@ import 'package:firebase_performance/firebase_performance.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 bool _isFirebaseInitialized = false;
+late final SharedPreferences _prefs;
 
 Future<void> _initFirebaseSafely() async {
   try {
@@ -47,8 +48,7 @@ Future<List<Map<String, dynamic>>> _getScores() async {
       }
       
       // Cache the list to SharedPreferences for offline capability
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('cached_leaderboard', json.encode(firebaseScores));
+      await _prefs.setString('cached_leaderboard', json.encode(firebaseScores));
       
       // Log successful fetch analytics event
       await FirebaseAnalytics.instance.logEvent(
@@ -70,8 +70,7 @@ Future<List<Map<String, dynamic>>> _getScores() async {
   }
 
   // Local fallback
-  final prefs = await SharedPreferences.getInstance();
-  final cachedStr = prefs.getString('cached_leaderboard');
+  final cachedStr = _prefs.getString('cached_leaderboard');
   if (cachedStr != null) {
     try {
       final List<dynamic> decoded = json.decode(cachedStr);
@@ -125,8 +124,7 @@ Future<void> _saveScore(String name, int score) async {
   }
 
   // Cache locally
-  final prefs = await SharedPreferences.getInstance();
-  final cachedStr = prefs.getString('cached_leaderboard');
+  final cachedStr = _prefs.getString('cached_leaderboard');
   List<Map<String, dynamic>> scores = [];
   if (cachedStr != null) {
     try {
@@ -141,11 +139,12 @@ Future<void> _saveScore(String name, int score) async {
     scores = scores.sublist(0, 10);
   }
   
-  await prefs.setString('cached_leaderboard', json.encode(scores));
+  await _prefs.setString('cached_leaderboard', json.encode(scores));
 }
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  _prefs = await SharedPreferences.getInstance();
   await _initFirebaseSafely();
 
   if (_isFirebaseInitialized) {

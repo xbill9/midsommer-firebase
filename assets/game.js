@@ -9,7 +9,8 @@
  * - Screen shake and polish effects.
  */
 
-// Route unhandled JS errors in WebView to Firebase Crashlytics via Flutter bridge
+// Route unhandled JS errors in WebView to Firebase Crashlytics via Flutter bridge, chaining to the HTML crash reporter
+const originalOnError = window.onerror;
 window.onerror = function (message, source, lineno, colno, error) {
     if (typeof LeaderboardChannel !== 'undefined') {
         LeaderboardChannel.postMessage(JSON.stringify({
@@ -17,6 +18,9 @@ window.onerror = function (message, source, lineno, colno, error) {
             message: String(message) + ' (at ' + String(source) + ':' + String(lineno) + ':' + String(colno) + ')',
             stack: error && error.stack ? String(error.stack) : ''
         }));
+    }
+    if (typeof originalOnError === 'function') {
+        originalOnError(message, source, lineno, colno, error);
     }
 };
 
