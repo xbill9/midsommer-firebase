@@ -10,7 +10,7 @@ Help Sven race against the solar timer to reach the Maypole (*midsommarstång*) 
 
 | Title Screen | Game Over Screen | Victory Screen |
 | :---: | :---: | :---: |
-| ![Title Screen](midsommer_madness_title.png) | ![Meltdown Screen](midsommer_meltdown.png) | ![Victory Screen](midsommer_victory.png) |
+| ![Title Screen](assets/midsommer_madness_title.png) | ![Meltdown Screen](assets/midsommer_meltdown.png) | ![Victory Screen](assets/midsommer_victory.png) |
 
 ---
 
