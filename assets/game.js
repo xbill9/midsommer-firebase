@@ -1152,6 +1152,9 @@ class Game {
                 const statEndMeatballs = document.getElementById("statEndMeatballs");
                 if (statEndMeatballs) statEndMeatballs.innerText = this.meatballsCollected;
                 
+                // Reset screen shake on Game Over
+                shakeIntensity = 0;
+                
                 // Check if user reached high score, show input if they did
                 const inputRow = document.getElementById("gameOverScoreInputRow");
                 if (inputRow) {
@@ -1195,6 +1198,9 @@ class Game {
                 if (statWinTime) statWinTime.innerText = `${Math.floor(this.levelTimer)}s`;
                 const statWinHorses = document.getElementById("statWinHorses");
                 if (statWinHorses) statWinHorses.innerText = this.horsesDefeated;
+                
+                // Reset screen shake on Victory
+                shakeIntensity = 0;
                 
                 // Check if user reached high score, show input if they did
                 const inputRow = document.getElementById("victoryScoreInputRow");
