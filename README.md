@@ -124,8 +124,14 @@ Automated deployment is configured via GitHub Actions:
 * **Production Deploy**: Pushing or merging to the `master` branch triggers `.github/workflows/firebase-hosting-merge.yml`, which automatically deploys the latest version to the live Firebase Hosting site.
 
 
-6. **Clean Workspace Caches**:
+ 6. **Clean Workspace Caches**:
    ```bash
    make clean
    ```
    *Cleans the Flutter project build directories and temporary caches.*
+
+ 7. **Fetch Cloud Firebase Logs**:
+    ```bash
+    make firebase-logs
+    ```
+    *Fetches the latest 20 cloud logs and audit logs directly from your Google Cloud/Firebase project using the `gcloud` CLI.*

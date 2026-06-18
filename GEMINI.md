@@ -20,6 +20,7 @@ Use the provided `Makefile` to run, build, and debug this application:
 * **Clean Build Directories**: `make clean` (runs `flutter clean`)
 * **Monitor Logs**: `make logcat` (runs `flutter logs`)
 * **Deploy Web App to Firebase**: `make deploy` (manual bypass using `npx -y firebase-tools`; pushes to `master` branch on GitHub automatically deploy to the live site)
+* **Fetch Cloud Logs**: `make firebase-logs` (runs `gcloud logging read` to fetch remote Firebase/GCP logs)
 
 ## 📂 Project Architecture
 

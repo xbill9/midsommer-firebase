@@ -6,7 +6,7 @@ export JAVA_HOME
 export PATH := $(JAVA_HOME)/bin:$(PATH)
 export ANDROID_HOME := /home/xbill/android-sdk
 
-.PHONY: help dev run build-apk build-ios install-apk clean logcat deploy
+.PHONY: help dev run build-apk build-ios install-apk clean logcat deploy firebase-logs
 
 # Default target: show help
 help:
@@ -21,6 +21,7 @@ help:
 	@echo "  make clean        - Clean Flutter build outputs and temporary caches"
 	@echo "  make logcat       - Monitor application logs using Flutter logger"
 	@echo "  make deploy       - Deploy the game to Firebase Hosting (manual bypass)"
+	@echo "  make firebase-logs - Fetch the latest cloud logs from Google Cloud / Firebase"
 	@echo "  Note: Pushing/merging to 'master' on GitHub automatically triggers deployment."
 	@echo "========================================================================"
 
@@ -59,4 +60,10 @@ logcat:
 deploy:
 	@echo "Deploying to Firebase Hosting..."
 	npx -y firebase-tools deploy --only hosting
+
+# Fetch cloud logs from Google Cloud / Firebase
+firebase-logs:
+	@echo "Fetching latest Firebase/GCP cloud logs..."
+	gcloud logging read --project=midsommer-madness --limit=20 --format="table(timestamp, severity, resource.type, textPayload, jsonPayload.message)"
+
 
