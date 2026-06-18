@@ -9,6 +9,17 @@
  * - Screen shake and polish effects.
  */
 
+// Route unhandled JS errors in WebView to Firebase Crashlytics via Flutter bridge
+window.onerror = function (message, source, lineno, colno, error) {
+    if (typeof LeaderboardChannel !== 'undefined') {
+        LeaderboardChannel.postMessage(JSON.stringify({
+            type: 'recordError',
+            message: String(message) + ' (at ' + String(source) + ':' + String(lineno) + ':' + String(colno) + ')',
+            stack: error && error.stack ? String(error.stack) : ''
+        }));
+    }
+};
+
 // --- AUDIO SYNTHESIS ENGINE (Web Audio API) ---
 class SoundEffectsManager {
     constructor() {
@@ -1054,25 +1065,47 @@ class Game {
     }
 
     checkIsHighScore(score) {
-        const tbody = document.getElementById("leaderboardBody");
-        if (!tbody) return true;
-        const rows = tbody.getElementsByTagName("tr");
-        // If leaderboard has empty slots
-        if (rows.length < 5) return true;
-        
-        // Get the score of the 5th place
-        const lastRow = rows[rows.length - 1];
-        if (lastRow) {
-            const lastScoreCell = lastRow.getElementsByTagName("td")[2];
-            if (lastScoreCell) {
-                const lastScore = parseInt(lastScoreCell.innerText, 10);
-                return score > lastScore;
+        try {
+            const tbody = document.getElementById("leaderboardBody");
+            if (!tbody) return true;
+            const rows = tbody.getElementsByTagName("tr");
+            // If leaderboard has empty slots
+            if (rows.length < 5) return true;
+            
+            // Get the score of the 5th place
+            const lastRow = rows[rows.length - 1];
+            if (lastRow) {
+                const lastScoreCell = lastRow.getElementsByTagName("td")[2];
+                if (lastScoreCell) {
+                    const lastScore = parseInt(lastScoreCell.innerText, 10);
+                    return !isNaN(lastScore) ? score > lastScore : true;
+                }
             }
+            return true;
+        } catch (e) {
+            console.error("Error in checkIsHighScore:", e);
+            if (typeof LeaderboardChannel !== 'undefined') {
+                LeaderboardChannel.postMessage(JSON.stringify({
+                    type: 'recordError',
+                    message: e.message || 'Error in checkIsHighScore',
+                    stack: e.stack || ''
+                }));
+            }
+            return true;
         }
-        return true;
     }
 
     // --- STATE MANAGER ---
+    
+    logEvent(name, params) {
+        if (typeof LeaderboardChannel !== 'undefined') {
+            LeaderboardChannel.postMessage(JSON.stringify({
+                type: 'logEvent',
+                name: name,
+                parameters: params || {}
+            }));
+        }
+    }
     
     changeState(newState) {
         this.currentState = newState;
@@ -1085,6 +1118,7 @@ class Game {
             document.getElementById("screenTitle").classList.add("active");
             this.stopTimer();
             sounds.setLevelAudioMode(1);
+            this.logEvent('view_title_screen');
         } 
         else if (newState === this.states.INTRO) {
             const currentLevel = levels[this.currentLevelIndex];
@@ -1097,52 +1131,102 @@ class Game {
             this.stopTimer();
             sounds.setLevelAudioMode(currentLevel.id);
             this.updateSidebarIndicators();
+            this.logEvent('level_start', { level_id: currentLevel.id, level_title: currentLevel.title });
         } 
         else if (newState === this.states.PLAYING) {
             // Screen handles canvas gameplay, overlays are hidden
             this.startTimer();
+            const currentLevel = levels[this.currentLevelIndex];
+            this.logEvent('level_playing', { level_id: currentLevel.id });
         } 
         else if (newState === this.states.GAMEOVER) {
-            document.getElementById("screenGameOver").classList.add("active");
-            
-            const score = this.player ? this.player.score : 0;
-            document.getElementById("statEndLevel").innerText = levels[this.currentLevelIndex].title;
-            document.getElementById("statEndScore").innerText = score;
-            document.getElementById("statEndMeatballs").innerText = this.meatballsCollected;
-            
-            // Check if user reached high score, show input if they did
-            const inputRow = document.getElementById("gameOverScoreInputRow");
-            if (inputRow) {
-                if (score > 0 && this.checkIsHighScore(score)) {
-                    inputRow.style.display = "flex";
-                } else {
-                    inputRow.style.display = "none";
+            try {
+                const screen = document.getElementById("screenGameOver");
+                if (screen) screen.classList.add("active");
+                
+                const score = this.player ? this.player.score : 0;
+                const statEndLevel = document.getElementById("statEndLevel");
+                if (statEndLevel) statEndLevel.innerText = levels[this.currentLevelIndex].title;
+                const statEndScore = document.getElementById("statEndScore");
+                if (statEndScore) statEndScore.innerText = score;
+                const statEndMeatballs = document.getElementById("statEndMeatballs");
+                if (statEndMeatballs) statEndMeatballs.innerText = this.meatballsCollected;
+                
+                // Check if user reached high score, show input if they did
+                const inputRow = document.getElementById("gameOverScoreInputRow");
+                if (inputRow) {
+                    if (score > 0 && this.checkIsHighScore(score)) {
+                        inputRow.style.display = "flex";
+                    } else {
+                        inputRow.style.display = "none";
+                    }
                 }
+                
+                this.stopTimer();
+                sounds.playSFX('lose');
+                const currentLevel = levels[this.currentLevelIndex];
+                this.logEvent('game_over', { 
+                    level_id: currentLevel.id, 
+                    score: score, 
+                    meatballs: this.meatballsCollected 
+                });
+            } catch (e) {
+                console.error("Error in GAMEOVER state transition:", e);
+                if (typeof LeaderboardChannel !== 'undefined') {
+                    LeaderboardChannel.postMessage(JSON.stringify({
+                        type: 'recordError',
+                        message: e.message || 'Error in GAMEOVER transition',
+                        stack: e.stack || ''
+                    }));
+                }
+                // Stop timer regardless to prevent loops
+                this.stopTimer();
             }
-            
-            this.stopTimer();
-            sounds.playSFX('lose');
         } 
         else if (newState === this.states.VICTORY) {
-            document.getElementById("screenVictory").classList.add("active");
-            
-            const totalScore = this.player ? this.player.score + Math.floor(this.levelTimer * 100) : 0;
-            document.getElementById("statWinScore").innerText = totalScore;
-            document.getElementById("statWinTime").innerText = `${Math.floor(this.levelTimer)}s`;
-            document.getElementById("statWinHorses").innerText = this.horsesDefeated;
-            
-            // Check if user reached high score, show input if they did
-            const inputRow = document.getElementById("victoryScoreInputRow");
-            if (inputRow) {
-                if (totalScore > 0 && this.checkIsHighScore(totalScore)) {
-                    inputRow.style.display = "flex";
-                } else {
-                    inputRow.style.display = "none";
+            try {
+                const screen = document.getElementById("screenVictory");
+                if (screen) screen.classList.add("active");
+                
+                const totalScore = this.player ? this.player.score + Math.floor(this.levelTimer * 100) : 0;
+                const statWinScore = document.getElementById("statWinScore");
+                if (statWinScore) statWinScore.innerText = totalScore;
+                const statWinTime = document.getElementById("statWinTime");
+                if (statWinTime) statWinTime.innerText = `${Math.floor(this.levelTimer)}s`;
+                const statWinHorses = document.getElementById("statWinHorses");
+                if (statWinHorses) statWinHorses.innerText = this.horsesDefeated;
+                
+                // Check if user reached high score, show input if they did
+                const inputRow = document.getElementById("victoryScoreInputRow");
+                if (inputRow) {
+                    if (totalScore > 0 && this.checkIsHighScore(totalScore)) {
+                        inputRow.style.display = "flex";
+                    } else {
+                        inputRow.style.display = "none";
+                    }
                 }
+                
+                this.stopTimer();
+                sounds.playSFX('win');
+                const currentLevel = levels[this.currentLevelIndex];
+                this.logEvent('level_victory', { 
+                    level_id: currentLevel.id, 
+                    total_score: totalScore, 
+                    time_left: Math.floor(this.levelTimer), 
+                    horses_defeated: this.horsesDefeated 
+                });
+            } catch (e) {
+                console.error("Error in VICTORY state transition:", e);
+                if (typeof LeaderboardChannel !== 'undefined') {
+                    LeaderboardChannel.postMessage(JSON.stringify({
+                        type: 'recordError',
+                        message: e.message || 'Error in VICTORY transition',
+                        stack: e.stack || ''
+                    }));
+                }
+                // Stop timer regardless
+                this.stopTimer();
             }
-            
-            this.stopTimer();
-            sounds.playSFX('win');
         }
     }
 
